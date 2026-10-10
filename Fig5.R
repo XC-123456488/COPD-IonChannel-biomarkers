@@ -28,7 +28,8 @@ gene_data <- read.csv(gene_set_file, header = TRUE, stringsAsFactors = FALSE)
 gene_list <- as.character(gene_data[[1]])
 gene_list <- gene_list[!is.na(gene_list) & gene_list != ""]
 
-plain_num <- function(x) format(x, scientific = FALSE, trim = TRUE)
+panel_map <- c(CATSPERB = "A", CHRNA1 = "B", GJB2 = "C", KCND3 = "D",
+               LRRC8D = "E", SCN4B = "F", TPCN1 = "G", TRPM7 = "H", VDAC3 = "I")
 
 for (i in seq_along(gene_list)) {
   current_gene <- gene_list[i]
@@ -56,11 +57,7 @@ for (i in seq_along(gene_list)) {
   kegg_tab <- as.data.frame(gsea_kegg)
   kegg_tab <- kegg_tab[order(-kegg_tab$NES), ]
 
-  out_tab <- kegg_tab
-  for (cl in intersect(c("pvalue", "p.adjust", "qvalue"), colnames(out_tab))) {
-    out_tab[[cl]] <- plain_num(out_tab[[cl]])
-  }
-  write.table(out_tab, file.path(work_dir, paste0("Figure5_", current_gene, "_KEGG_results.tsv")),
+  write.table(kegg_tab, file.path(work_dir, paste0("Figure5_", current_gene, "_KEGG_results.tsv")),
               sep = "\t", quote = FALSE, row.names = FALSE)
 
   kegg_up <- head(kegg_tab$ID[kegg_tab$NES > 0], out_term_num)
@@ -78,7 +75,8 @@ for (i in seq_along(gene_list)) {
     base_size = 6,
     rel_heights = c(1.2, 0.3, 0.5)
   )
-  pdf(file = file.path(work_dir, paste0("Figure5_", current_gene, "_multiterm.pdf")), width = 7.5, height = 5.5)
+  panel_letter <- if (current_gene %in% names(panel_map)) panel_map[[current_gene]] else current_gene
+  pdf(file = file.path(work_dir, paste0("Figure5", panel_letter, ".pdf")), width = 7.5, height = 5.5)
   print(plt_kegg)
   dev.off()
 
