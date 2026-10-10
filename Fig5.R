@@ -28,6 +28,8 @@ gene_data <- read.csv(gene_set_file, header = TRUE, stringsAsFactors = FALSE)
 gene_list <- as.character(gene_data[[1]])
 gene_list <- gene_list[!is.na(gene_list) & gene_list != ""]
 
+plain_num <- function(x) format(x, scientific = FALSE, trim = TRUE)
+
 for (i in seq_along(gene_list)) {
   current_gene <- gene_list[i]
   if (!(current_gene %in% rownames(expr_mat))) next
@@ -49,48 +51,45 @@ for (i in seq_along(gene_list)) {
   gsea_kegg <- tryCatch({
     clusterProfiler::GSEA(logFC_vec, TERM2GENE = kegg_gmt, pvalueCutoff = 1)
   }, error = function(e) NULL)
-
   if (is.null(gsea_kegg)) next
 
   kegg_tab <- as.data.frame(gsea_kegg)
-  kegg_tab <- kegg_tab[kegg_tab$pvalue < 1, , drop = FALSE]
-  kegg_tab <- kegg_tab[order(kegg_tab$p.adjust, -abs(kegg_tab$NES)), ]
-  write.table(kegg_tab, file.path(work_dir, paste0("Figure5_", current_gene, "_KEGG_results.tsv")),
+  kegg_tab <- kegg_tab[order(-kegg_tab$NES), ]
+
+  out_tab <- kegg_tab
+  for (cl in intersect(c("pvalue", "p.adjust", "qvalue"), colnames(out_tab))) {
+    out_tab[[cl]] <- plain_num(out_tab[[cl]])
+  }
+  write.table(out_tab, file.path(work_dir, paste0("Figure5_", current_gene, "_KEGG_results.tsv")),
               sep = "\t", quote = FALSE, row.names = FALSE)
 
-  if (!("NES" %in% colnames(kegg_tab)) || nrow(kegg_tab) == 0) next
-
-  kegg_up <- rownames(kegg_tab)[kegg_tab$NES > 0]
-  kegg_dn <- rownames(kegg_tab)[kegg_tab$NES < 0]
-  kegg_up <- kegg_up[1:min(length(kegg_up), out_term_num)]
-  kegg_dn <- kegg_dn[1:min(length(kegg_dn), out_term_num)]
+  kegg_up <- head(kegg_tab$ID[kegg_tab$NES > 0], out_term_num)
+  kegg_dn <- rev(tail(kegg_tab$ID[kegg_tab$NES < 0], out_term_num))
   kegg_all <- c(kegg_up, kegg_dn)
+  if (length(kegg_all) == 0) next
 
-  if (length(kegg_all) > 0) {
-    n_terms <- length(kegg_all)
-    pal <- brewer.pal(min(n_terms, 8), "Set1")
-    if (n_terms > 8) pal <- rep(pal, length.out = n_terms)
-    plt_kegg <- gseaplot2(
-      gsea_kegg,
-      geneSetID = kegg_all,
-      title = paste0(current_gene, " KEGG GSEA"),
-      color = pal,
-      base_size = 6,
-      rel_heights = c(1.2, 0.3, 0.5)
-    )
-    pdf(file = file.path(work_dir, paste0("Figure5_", current_gene, "_multiterm.pdf")), width = 7.5, height = 5.5)
-    print(plt_kegg)
-    dev.off()
-  }
+  pal <- brewer.pal(min(length(kegg_all), 8), "Set1")
+  if (length(kegg_all) > 8) pal <- rep(pal, length.out = length(kegg_all))
+
+  plt_kegg <- gseaplot2(
+    gsea_kegg,
+    geneSetID = kegg_all,
+    color = pal,
+    base_size = 6,
+    rel_heights = c(1.2, 0.3, 0.5)
+  )
+  pdf(file = file.path(work_dir, paste0("Figure5_", current_gene, "_multiterm.pdf")), width = 7.5, height = 5.5)
+  print(plt_kegg)
+  dev.off()
 
   if (length(kegg_up) > 0) {
     pdf(file = file.path(work_dir, paste0("Figure5_", current_gene, "_UP.pdf")), width = 7, height = 5.5)
-    print(gseaplot2(gsea_kegg, kegg_up, base_size = 12, title = paste0(current_gene, " KEGG Upregulated")))
+    print(gseaplot2(gsea_kegg, kegg_up, base_size = 12))
     dev.off()
   }
   if (length(kegg_dn) > 0) {
     pdf(file = file.path(work_dir, paste0("Figure5_", current_gene, "_DOWN.pdf")), width = 7, height = 5.5)
-    print(gseaplot2(gsea_kegg, kegg_dn, base_size = 12, title = paste0(current_gene, " KEGG Downregulated")))
+    print(gseaplot2(gsea_kegg, kegg_dn, base_size = 12))
     dev.off()
   }
 }

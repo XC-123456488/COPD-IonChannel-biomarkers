@@ -163,6 +163,6 @@ resulting docking poses were rendered in PyMOL.
 ### 7.3 Other notes
 
 - All findings are computational predictions and require experimental validation.
-- Figure 3F (correlation heatmap of the nine hub genes) is produced by a
+- Figure 3H (co-expression heatmap of the nine hub genes) is produced by a
   separate script that is not included in this repository.
 - Figure legends and the manuscript are provided separately.
